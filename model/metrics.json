@@ -1,42 +1,44 @@
 {
-    "accuracy": 0.9715588945532599,
+    "accuracy": 0.9712905822377247,
     "confusion_matrix": [
         [
             2181,
             84
         ],
         [
-            22,
-            1440
+            23,
+            1439
         ]
     ],
     "classification_report": {
         "0": {
-            "precision": 0.9900136177939174,
+            "precision": 0.9895644283121597,
             "recall": 0.9629139072847682,
-            "f1-score": 0.9762757385854969,
+            "f1-score": 0.9760572835086149,
             "support": 2265.0
         },
         "1": {
-            "precision": 0.9448818897637795,
-            "recall": 0.9849521203830369,
-            "f1-score": 0.9645010046885466,
+            "precision": 0.9448456992777413,
+            "recall": 0.9842681258549931,
+            "f1-score": 0.9641541038525964,
             "support": 1462.0
         },
-        "accuracy": 0.9715588945532599,
+        "accuracy": 0.9712905822377247,
         "macro avg": {
-            "precision": 0.9674477537788484,
-            "recall": 0.9739330138339026,
-            "f1-score": 0.9703883716370217,
+            "precision": 0.9672050637949505,
+            "recall": 0.9735910165698807,
+            "f1-score": 0.9701056936806056,
             "support": 3727.0
         },
         "weighted avg": {
-            "precision": 0.9723096772572762,
-            "recall": 0.9715588945532599,
-            "f1-score": 0.9716568330428779,
+            "precision": 0.9720224959675609,
+            "recall": 0.9712905822377247,
+            "f1-score": 0.9713879922134449,
             "support": 3727.0
         }
     },
     "training_samples": 14907,
-    "testing_samples": 3727
+    "testing_samples": 3727,
+    "model": "TF-IDF + Logistic Regression",
+    "feature_engineering": "Advanced text + URL security features"
 }
