@@ -1,86 +1,24 @@
 import json
-import os
-
 import joblib
 import matplotlib.pyplot as plt
 import streamlit as st
 
-from feature_engineering import (
-    extract_features,
-    augment_text,
-    extract_urls,
-)
+from feature_engineering import extract_features, augment_text
+from email_header_analysis import analyze_headers
 
-
-# ============================================================
-# CONFIGURATION
-# ============================================================
 
 MODEL_PATH = "model/phishing_model.joblib"
 METRICS_PATH = "model/metrics.json"
 
 
+# ============================================================
+# PAGE CONFIGURATION
+# ============================================================
+
 st.set_page_config(
     page_title="Phishing Email Detector",
     page_icon="🛡️",
     layout="wide",
-    initial_sidebar_state="expanded",
-)
-
-
-# ============================================================
-# CUSTOM STYLING
-# ============================================================
-
-st.markdown(
-    """
-    <style>
-
-    .main-title {
-        font-size: 42px;
-        font-weight: 800;
-        margin-bottom: 5px;
-    }
-
-    .subtitle {
-        font-size: 18px;
-        opacity: 0.8;
-        margin-bottom: 25px;
-    }
-
-    .risk-card {
-        padding: 25px;
-        border-radius: 15px;
-        text-align: center;
-        border: 1px solid rgba(128,128,128,0.25);
-        margin: 10px 0;
-    }
-
-    .risk-score {
-        font-size: 48px;
-        font-weight: 800;
-    }
-
-    .risk-label {
-        font-size: 22px;
-        font-weight: 700;
-    }
-
-    .section-title {
-        font-size: 25px;
-        font-weight: 700;
-        margin-top: 20px;
-    }
-
-    .indicator {
-        padding: 10px;
-        border-radius: 8px;
-        margin: 5px 0;
-    }
-
-    </style>
-    """,
-    unsafe_allow_html=True,
 )
 
 
@@ -90,30 +28,25 @@ st.markdown(
 
 @st.cache_resource
 def load_model():
-    if not os.path.exists(MODEL_PATH):
-        st.error(
-            "Model file not found. "
-            "Please make sure model/phishing_model.joblib exists."
-        )
-        st.stop()
 
-    return joblib.load(MODEL_PATH)
+    return joblib.load(
+        MODEL_PATH
+    )
 
+
+# ============================================================
+# LOAD METRICS
+# ============================================================
 
 @st.cache_data
 def load_metrics():
-    if not os.path.exists(METRICS_PATH):
-        st.error(
-            "Metrics file not found. "
-            "Please make sure model/metrics.json exists."
-        )
-        st.stop()
 
     with open(
         METRICS_PATH,
         "r",
         encoding="utf-8",
     ) as file:
+
         return json.load(file)
 
 
@@ -122,136 +55,36 @@ metrics = load_metrics()
 
 
 # ============================================================
-# RISK SCORE FUNCTION
-# ============================================================
-
-def calculate_risk_score(
-    phishing_probability,
-    features,
-):
-    """
-    Calculates a 0-100 risk score.
-
-    The score combines:
-    - ML phishing probability
-    - suspicious keywords
-    - number of URLs
-    - IP-based URLs
-    - URL shorteners
-    """
-
-    score = phishing_probability * 70
-
-    # Suspicious keywords
-    keyword_count = features[
-        "suspicious_keyword_count"
-    ]
-
-    score += min(keyword_count * 3, 15)
-
-    # URLs
-    url_count = features["url_count"]
-
-    if url_count >= 1:
-        score += min(url_count * 2, 6)
-
-    # IP-based URL
-    if features["has_ip_url"]:
-        score += 6
-
-    # URL shortener
-    if features["has_shortener"]:
-        score += 5
-
-    score = min(round(score), 100)
-
-    return score
-
-
-def get_risk_level(score):
-
-    if score >= 81:
-        return "CRITICAL", "🚨"
-
-    if score >= 61:
-        return "HIGH", "🔴"
-
-    if score >= 31:
-        return "MEDIUM", "🟡"
-
-    return "LOW", "🟢"
-
-
-# ============================================================
 # HEADER
 # ============================================================
 
-st.markdown(
-    '<div class="main-title">🛡️ Phishing Email Detection System</div>',
-    unsafe_allow_html=True,
+st.title(
+    "🛡️ Phishing Email Detection System"
 )
 
 st.markdown(
     """
-    <div class="subtitle">
-    AI-powered email security analysis using
-    Machine Learning, NLP and URL-based indicators.
-    </div>
-    """,
-    unsafe_allow_html=True,
+    ### Machine Learning based Email Security
+
+    Analyze an email and determine whether it is
+    likely to be **Phishing** or **Safe** using
+    machine learning, URL security analysis and
+    email header inspection.
+    """
 )
 
 
-# ============================================================
-# SIDEBAR
-# ============================================================
-
-with st.sidebar:
-
-    st.header("🛡️ About")
-
-    st.write(
-        """
-        This application analyzes email content and
-        predicts whether an email is likely to be
-        **Safe** or **Phishing**.
-        """
-    )
-
-    st.divider()
-
-    st.subheader("🤖 Machine Learning")
-
-    st.write("TF-IDF + Logistic Regression")
-
-    st.subheader("🔎 Analysis")
-
-    st.write(
-        """
-        • Email text  
-        • Suspicious keywords  
-        • URLs  
-        • IP-based URLs  
-        • URL shorteners  
-        • ML probability
-        """
-    )
-
-    st.divider()
-
-    st.caption(
-        "Phishing Email Detection Project"
-    )
+st.divider()
 
 
 # ============================================================
 # EMAIL INPUT
 # ============================================================
 
-st.markdown(
-    '<div class="section-title">📧 Email Analysis</div>',
-    unsafe_allow_html=True,
+st.header(
+    "📧 Email Analysis"
 )
+
 
 col1, col2 = st.columns(2)
 
@@ -260,7 +93,7 @@ with col1:
 
     sender = st.text_input(
         "Sender Email",
-        placeholder="security@example.com",
+        placeholder="example@domain.com",
     )
 
 
@@ -281,6 +114,39 @@ email_body = st.text_area(
 )
 
 
+# ============================================================
+# EMAIL HEADER INPUT
+# ============================================================
+
+st.subheader(
+    "📨 Advanced Email Header Analysis"
+)
+
+st.caption(
+    "Optional: Paste the raw email headers below "
+    "to analyze From, Reply-To, Return-Path, SPF, "
+    "DKIM and DMARC indicators."
+)
+
+
+raw_headers = st.text_area(
+    "Raw Email Headers",
+    height=180,
+    placeholder=(
+        "From: support@example.com\n"
+        "Reply-To: support@example.com\n"
+        "Return-Path: support@example.com\n"
+        "Message-ID: <123@example.com>\n"
+        "Authentication-Results: example.com; "
+        "spf=pass; dkim=pass; dmarc=pass"
+    ),
+)
+
+
+# ============================================================
+# ANALYZE BUTTON
+# ============================================================
+
 analyze = st.button(
     "🔍 Analyze Email",
     type="primary",
@@ -289,7 +155,7 @@ analyze = st.button(
 
 
 # ============================================================
-# ANALYSIS
+# EMAIL ANALYSIS
 # ============================================================
 
 if analyze:
@@ -297,13 +163,13 @@ if analyze:
     if not email_body.strip():
 
         st.warning(
-            "⚠️ Please enter the email content before analyzing."
+            "Please enter the email content."
         )
 
     else:
 
         # ----------------------------------------------------
-        # Combine email information
+        # Combine email content
         # ----------------------------------------------------
 
         combined_text = f"""
@@ -312,56 +178,51 @@ if analyze:
         Email Body: {email_body}
         """
 
+
         # ----------------------------------------------------
-        # Feature Engineering
+        # Machine learning prediction
         # ----------------------------------------------------
 
         processed_text = augment_text(
             combined_text
         )
 
-        features = extract_features(
-            combined_text
-        )
-
-        # ----------------------------------------------------
-        # ML Prediction
-        # ----------------------------------------------------
 
         prediction = model.predict(
             [processed_text]
         )[0]
 
+
         probabilities = model.predict_proba(
             [processed_text]
         )[0]
 
-        safe_probability = float(
-            probabilities[0]
-        )
 
-        phishing_probability = float(
-            probabilities[1]
-        )
+        phishing_probability = probabilities[1]
+
+        safe_probability = probabilities[0]
+
 
         # ----------------------------------------------------
-        # Risk Score
+        # Feature extraction
         # ----------------------------------------------------
 
-        risk_score = calculate_risk_score(
-            phishing_probability,
-            features,
+        features = extract_features(
+            combined_text
         )
 
-        risk_level, risk_icon = get_risk_level(
-            risk_score
-        )
-
-        # ----------------------------------------------------
-        # Result
-        # ----------------------------------------------------
 
         st.divider()
+
+
+        # ====================================================
+        # ML RESULT
+        # ====================================================
+
+        st.header(
+            "🤖 Machine Learning Result"
+        )
+
 
         if prediction == 1:
 
@@ -379,95 +240,29 @@ if analyze:
 
             confidence = safe_probability
 
-        # ----------------------------------------------------
-        # Main Metrics
-        # ----------------------------------------------------
 
-        c1, c2, c3 = st.columns(3)
-
-        with c1:
-
-            st.metric(
-                "Risk Score",
-                f"{risk_score}/100",
-            )
-
-        with c2:
-
-            st.metric(
-                "ML Confidence",
-                f"{confidence * 100:.2f}%",
-            )
-
-        with c3:
-
-            st.metric(
-                "Prediction",
-                "Phishing"
-                if prediction == 1
-                else "Safe",
-            )
-
-        # ----------------------------------------------------
-        # Risk Dashboard
-        # ----------------------------------------------------
-
-        st.markdown(
-            f"""
-            <div class="risk-card">
-
-                <div class="risk-score">
-                    {risk_score}/100
-                </div>
-
-                <div class="risk-label">
-                    {risk_icon} {risk_level} RISK
-                </div>
-
-            </div>
-            """,
-            unsafe_allow_html=True,
+        st.metric(
+            "Model Confidence",
+            f"{confidence * 100:.2f}%",
         )
+
 
         st.progress(
-            risk_score / 100
+            float(confidence)
         )
 
-        # ----------------------------------------------------
-        # Probability Breakdown
-        # ----------------------------------------------------
 
-        st.subheader(
-            "📊 Prediction Probability"
-        )
-
-        p1, p2 = st.columns(2)
-
-        with p1:
-
-            st.metric(
-                "🟢 Safe Probability",
-                f"{safe_probability * 100:.2f}%",
-            )
-
-        with p2:
-
-            st.metric(
-                "🔴 Phishing Probability",
-                f"{phishing_probability * 100:.2f}%",
-            )
-
-        # ----------------------------------------------------
-        # Email Feature Analysis
-        # ----------------------------------------------------
-
-        st.divider()
+        # ====================================================
+        # EMAIL FEATURES
+        # ====================================================
 
         st.subheader(
             "🔎 Email Feature Analysis"
         )
 
-        c1, c2, c3, c4, c5 = st.columns(5)
+
+        c1, c2, c3, c4 = st.columns(4)
+
 
         with c1:
 
@@ -475,6 +270,7 @@ if analyze:
                 "URLs Found",
                 features["url_count"],
             )
+
 
         with c2:
 
@@ -485,6 +281,7 @@ if analyze:
                 ],
             )
 
+
         with c3:
 
             st.metric(
@@ -493,6 +290,7 @@ if analyze:
                 if features["has_https"]
                 else "No",
             )
+
 
         with c4:
 
@@ -503,263 +301,396 @@ if analyze:
                 else "No",
             )
 
-        with c5:
 
-            st.metric(
-                "Shortener",
-                "Yes"
-                if features["has_shortener"]
-                else "No",
-            )
+        # ====================================================
+        # SUSPICIOUS KEYWORDS
+        # ====================================================
 
-        # ----------------------------------------------------
-        # Suspicious Keywords
-        # ----------------------------------------------------
-
-        st.subheader(
-            "🚩 Suspicious Indicators"
-        )
-
-        suspicious_keywords = features[
+        if features[
             "suspicious_keywords"
-        ]
+        ]:
 
-        if suspicious_keywords:
-
-            st.warning(
-                f"{len(suspicious_keywords)} "
-                "suspicious keyword(s) detected."
+            st.write(
+                "**Suspicious keywords detected:**"
             )
 
-            for keyword in suspicious_keywords:
-
-                st.markdown(
-                    f"- ⚠️ **{keyword}**"
+            st.write(
+                ", ".join(
+                    features[
+                        "suspicious_keywords"
+                    ]
                 )
-
-        else:
-
-            st.success(
-                "No suspicious keywords detected."
             )
 
-        # ----------------------------------------------------
-        # URL Analysis
-        # ----------------------------------------------------
+
+        # ====================================================
+        # URL SECURITY
+        # ====================================================
 
         st.subheader(
             "🔗 URL Security Analysis"
         )
 
-        urls = extract_urls(
-            combined_text
+
+        url_risk = features[
+            "average_url_risk"
+        ]
+
+
+        st.metric(
+            "Average URL Risk Score",
+            f"{url_risk}/100",
         )
 
-        if urls:
 
-            for index, url in enumerate(
-                urls,
+        url_results = features[
+            "url_analysis"
+        ]["results"]
+
+
+        if url_results:
+
+            for index, result in enumerate(
+                url_results,
                 start=1,
             ):
 
-                st.write(
-                    f"**URL {index}:** `{url}`"
-                )
+                with st.expander(
+                    f"URL {index}: {result['url']}"
+                ):
 
-            if features["has_ip_url"]:
+                    st.write(
+                        f"**Domain:** "
+                        f"{result['domain']}"
+                    )
+
+                    st.write(
+                        f"**Risk Score:** "
+                        f"{result['url_risk_score']}/100"
+                    )
+
+                    st.write(
+                        f"**HTTPS:** "
+                        f"{'Yes' if result['has_https'] else 'No'}"
+                    )
+
+                    st.write(
+                        f"**IP Address:** "
+                        f"{'Yes' if result['has_ip'] else 'No'}"
+                    )
+
+                    st.write(
+                        f"**URL Shortener:** "
+                        f"{'Yes' if result['is_shortener'] else 'No'}"
+                    )
+
+                    st.write(
+                        f"**Suspicious TLD:** "
+                        f"{'Yes' if result['suspicious_tld'] else 'No'}"
+                    )
+
+                    st.write(
+                        f"**@ Symbol:** "
+                        f"{'Yes' if result['has_at_symbol'] else 'No'}"
+                    )
+
+                    st.write(
+                        f"**Subdomains:** "
+                        f"{result['subdomain_count']}"
+                    )
+
+                    if result[
+                        "indicators"
+                    ]:
+
+                        st.warning(
+                            "⚠️ Security indicators: "
+                            + ", ".join(
+                                result[
+                                    "indicators"
+                                ]
+                            )
+                        )
+
+
+        # ====================================================
+        # URL SHORTENER WARNING
+        # ====================================================
+
+        if features[
+            "has_shortener"
+        ]:
+
+            st.warning(
+                "⚠️ A URL shortener was detected."
+            )
+
+
+        # ====================================================
+        # EMAIL HEADER ANALYSIS
+        # ====================================================
+
+        st.divider()
+
+        st.header(
+            "📨 Email Header Security Analysis"
+        )
+
+
+        if raw_headers.strip():
+
+            header_result = analyze_headers(
+                raw_headers
+            )
+
+
+            if not header_result.get(
+                "valid",
+                False,
+            ):
 
                 st.warning(
-                    "⚠️ One or more URLs use an IP address."
+                    "Unable to parse the supplied "
+                    "email headers."
                 )
 
             else:
 
-                st.success(
-                    "✓ No IP-based URL detected."
+                header_score = header_result[
+                    "risk_score"
+                ]
+
+
+                # ------------------------------------------------
+                # Header risk result
+                # ------------------------------------------------
+
+                if header_score >= 70:
+
+                    st.error(
+                        f"🚨 HIGH HEADER RISK — "
+                        f"{header_score}/100"
+                    )
+
+                elif header_score >= 40:
+
+                    st.warning(
+                        f"⚠️ MEDIUM HEADER RISK — "
+                        f"{header_score}/100"
+                    )
+
+                else:
+
+                    st.success(
+                        f"✅ LOW HEADER RISK — "
+                        f"{header_score}/100"
+                    )
+
+
+                st.progress(
+                    header_score / 100
                 )
 
-            if features["has_shortener"]:
 
-                st.warning(
-                    "⚠️ A URL shortener was detected."
+                # ------------------------------------------------
+                # Header domains
+                # ------------------------------------------------
+
+                h1, h2, h3 = st.columns(3)
+
+
+                with h1:
+
+                    st.metric(
+                        "From Domain",
+                        header_result[
+                            "from_domain"
+                        ]
+                        or "Unknown",
+                    )
+
+
+                with h2:
+
+                    st.metric(
+                        "Reply-To Domain",
+                        header_result[
+                            "reply_to_domain"
+                        ]
+                        or "Unknown",
+                    )
+
+
+                with h3:
+
+                    st.metric(
+                        "Return-Path Domain",
+                        header_result[
+                            "return_path_domain"
+                        ]
+                        or "Unknown",
+                    )
+
+
+                # ------------------------------------------------
+                # Domain mismatches
+                # ------------------------------------------------
+
+                st.subheader(
+                    "🔍 Domain Consistency"
                 )
 
-            else:
 
-                st.success(
-                    "✓ No known URL shortener detected."
+                if header_result[
+                    "reply_to_mismatch"
+                ]:
+
+                    st.error(
+                        "⚠️ From and Reply-To "
+                        "domains do not match."
+                    )
+
+                else:
+
+                    st.success(
+                        "✅ From and Reply-To domains match."
+                    )
+
+
+                if header_result[
+                    "return_path_mismatch"
+                ]:
+
+                    st.error(
+                        "⚠️ From and Return-Path "
+                        "domains do not match."
+                    )
+
+                else:
+
+                    st.success(
+                        "✅ From and Return-Path domains match."
+                    )
+
+
+                # ------------------------------------------------
+                # Authentication
+                # ------------------------------------------------
+
+                st.subheader(
+                    "🔐 Email Authentication"
                 )
 
-            if features["has_https"]:
 
-                st.info(
-                    "🔐 At least one HTTPS URL was detected."
-                )
+                authentication = header_result[
+                    "authentication"
+                ]
 
-            else:
 
-                st.warning(
-                    "⚠️ No HTTPS URL was detected."
-                )
+                a1, a2, a3 = st.columns(3)
+
+
+                with a1:
+
+                    if authentication[
+                        "spf"
+                    ] == "Pass":
+
+                        st.success(
+                            "SPF: PASS"
+                        )
+
+                    elif authentication[
+                        "spf"
+                    ] == "Not Provided":
+
+                        st.info(
+                            "SPF: NOT PROVIDED"
+                        )
+
+                    else:
+
+                        st.error(
+                            "SPF: FAILED"
+                        )
+
+
+                with a2:
+
+                    if authentication[
+                        "dkim"
+                    ] == "Pass":
+
+                        st.success(
+                            "DKIM: PASS"
+                        )
+
+                    elif authentication[
+                        "dkim"
+                    ] == "Not Provided":
+
+                        st.info(
+                            "DKIM: NOT PROVIDED"
+                        )
+
+                    else:
+
+                        st.error(
+                            "DKIM: FAILED"
+                        )
+
+
+                with a3:
+
+                    if authentication[
+                        "dmarc"
+                    ] == "Pass":
+
+                        st.success(
+                            "DMARC: PASS"
+                        )
+
+                    elif authentication[
+                        "dmarc"
+                    ] == "Not Provided":
+
+                        st.info(
+                            "DMARC: NOT PROVIDED"
+                        )
+
+                    else:
+
+                        st.error(
+                            "DMARC: FAILED"
+                        )
+
+
+                # ------------------------------------------------
+                # Security indicators
+                # ------------------------------------------------
+
+                if header_result[
+                    "indicators"
+                ]:
+
+                    st.subheader(
+                        "⚠️ Header Security Indicators"
+                    )
+
+                    for indicator in header_result[
+                        "indicators"
+                    ]:
+
+                        st.warning(
+                            indicator
+                        )
 
         else:
 
             st.info(
-                "No URLs were detected in this email."
+                "No email headers were provided. "
+                "Header analysis was skipped."
             )
-
-        # ----------------------------------------------------
-        # Security Recommendations
-        # ----------------------------------------------------
-
-        st.subheader(
-            "🛡️ Security Recommendations"
-        )
-
-        recommendations = []
-
-        if prediction == 1:
-
-            recommendations.append(
-                "Do not click links in this email."
-            )
-
-            recommendations.append(
-                "Do not provide passwords, OTPs or banking information."
-            )
-
-            recommendations.append(
-                "Verify the sender through an independent channel."
-            )
-
-        if features["has_ip_url"]:
-
-            recommendations.append(
-                "Avoid visiting IP-based URLs."
-            )
-
-        if features["has_shortener"]:
-
-            recommendations.append(
-                "Be cautious with shortened URLs because the final destination may be hidden."
-            )
-
-        if features[
-            "suspicious_keyword_count"
-        ] >= 3:
-
-            recommendations.append(
-                "The email contains multiple suspicious or urgency-related terms."
-            )
-
-        if not recommendations:
-
-            recommendations.append(
-                "No major automated warning indicators were detected."
-            )
-
-        for recommendation in recommendations:
-
-            st.markdown(
-                f"• {recommendation}"
-            )
-
-        # ----------------------------------------------------
-        # Download Report
-        # ----------------------------------------------------
-
-        st.divider()
-
-        st.subheader(
-            "📄 Security Report"
-        )
-
-        report = f"""
-PHISHING EMAIL SECURITY REPORT
-========================================
-
-Prediction:
-{"PHISHING" if prediction == 1 else "SAFE"}
-
-Risk Score:
-{risk_score}/100
-
-Risk Level:
-{risk_level}
-
-ML Confidence:
-{confidence * 100:.2f}%
-
-Safe Probability:
-{safe_probability * 100:.2f}%
-
-Phishing Probability:
-{phishing_probability * 100:.2f}%
-
-
-EMAIL INFORMATION
-========================================
-
-Sender:
-{sender}
-
-Subject:
-{subject}
-
-
-URL ANALYSIS
-========================================
-
-URLs Detected:
-{features["url_count"]}
-
-HTTPS Detected:
-{"Yes" if features["has_https"] else "No"}
-
-IP-Based URL:
-{"Yes" if features["has_ip_url"] else "No"}
-
-URL Shortener:
-{"Yes" if features["has_shortener"] else "No"}
-
-
-SUSPICIOUS KEYWORDS
-========================================
-
-{", ".join(suspicious_keywords) if suspicious_keywords else "None detected"}
-
-
-DETECTED URLS
-========================================
-
-{"".join(f"{i}. {url}\n" for i, url in enumerate(urls, 1)) if urls else "None detected"}
-
-
-MODEL
-========================================
-
-Algorithm:
-TF-IDF + Logistic Regression
-
-Test Accuracy:
-{metrics["accuracy"] * 100:.2f}%
-
-
-DISCLAIMER
-========================================
-
-This report is generated by an automated machine-learning
-system and should not be considered a definitive security
-verdict. Always verify suspicious emails manually.
-"""
-
-        st.download_button(
-            label="📥 Download Security Report",
-            data=report,
-            file_name="phishing_email_security_report.txt",
-            mime="text/plain",
-            use_container_width=True,
-        )
 
 
 # ============================================================
@@ -773,173 +704,95 @@ st.header(
 )
 
 
-accuracy = metrics.get(
-    "accuracy",
-    0,
-)
-
-classification_report_data = metrics.get(
-    "classification_report",
-    {},
-)
+accuracy = metrics[
+    "accuracy"
+]
 
 
-precision = classification_report_data.get(
-    "weighted avg",
-    {},
-).get(
-    "precision",
-    0,
-)
-
-recall = classification_report_data.get(
-    "weighted avg",
-    {},
-).get(
-    "recall",
-    0,
-)
-
-f1_score = classification_report_data.get(
-    "weighted avg",
-    {},
-).get(
-    "f1-score",
-    0,
+st.metric(
+    "Test Accuracy",
+    f"{accuracy * 100:.2f}%",
 )
 
 
-m1, m2, m3, m4 = st.columns(4)
+cm = metrics[
+    "confusion_matrix"
+]
 
 
-with m1:
-
-    st.metric(
-        "Accuracy",
-        f"{accuracy * 100:.2f}%",
-    )
+fig, ax = plt.subplots()
 
 
-with m2:
-
-    st.metric(
-        "Precision",
-        f"{precision * 100:.2f}%",
-    )
+ax.imshow(
+    cm
+)
 
 
-with m3:
-
-    st.metric(
-        "Recall",
-        f"{recall * 100:.2f}%",
-    )
+ax.set_title(
+    "Confusion Matrix"
+)
 
 
-with m4:
+ax.set_xlabel(
+    "Predicted Label"
+)
 
-    st.metric(
-        "F1 Score",
-        f"{f1_score * 100:.2f}%",
-    )
+
+ax.set_ylabel(
+    "Actual Label"
+)
+
+
+ax.set_xticks(
+    [0, 1]
+)
+
+
+ax.set_yticks(
+    [0, 1]
+)
+
+
+ax.set_xticklabels(
+    ["Safe", "Phishing"]
+)
+
+
+ax.set_yticklabels(
+    ["Safe", "Phishing"]
+)
+
+
+for i in range(2):
+
+    for j in range(2):
+
+        ax.text(
+            j,
+            i,
+            cm[i][j],
+            ha="center",
+            va="center",
+        )
+
+
+st.pyplot(
+    fig
+)
 
 
 # ============================================================
-# CONFUSION MATRIX
-# ============================================================
-
-st.subheader(
-    "📈 Confusion Matrix"
-)
-
-
-cm = metrics.get(
-    "confusion_matrix",
-    [],
-)
-
-
-if len(cm) == 2:
-
-    fig, ax = plt.subplots()
-
-    ax.imshow(cm)
-
-    ax.set_title(
-        "Confusion Matrix"
-    )
-
-    ax.set_xlabel(
-        "Predicted Label"
-    )
-
-    ax.set_ylabel(
-        "Actual Label"
-    )
-
-    ax.set_xticks(
-        [0, 1]
-    )
-
-    ax.set_yticks(
-        [0, 1]
-    )
-
-    ax.set_xticklabels(
-        ["Safe", "Phishing"]
-    )
-
-    ax.set_yticklabels(
-        ["Safe", "Phishing"]
-    )
-
-    for i in range(2):
-
-        for j in range(2):
-
-            ax.text(
-                j,
-                i,
-                cm[i][j],
-                ha="center",
-                va="center",
-                fontsize=14,
-            )
-
-    st.pyplot(
-        fig,
-        use_container_width=True,
-    )
-
-else:
-
-    st.warning(
-        "Confusion matrix data is unavailable."
-    )
-
-
-# ============================================================
-# FOOTER / DISCLAIMER
+# DISCLAIMER
 # ============================================================
 
 st.divider()
 
+
 st.info(
     """
-    ⚠️ **Security Notice**
-
-    This application provides an automated machine-learning
-    risk assessment. It may produce false positives or false
-    negatives and should not be treated as a definitive
-    security verdict.
-
-    Never click suspicious links or provide credentials based
-    solely on this prediction.
+    ⚠️ This application is a machine-learning
+    demonstration and should not be treated as
+    a definitive security verdict. Always verify
+    suspicious emails manually.
     """
-)
-
-
-st.caption(
-    "Phishing Email Detection System • "
-    "TF-IDF + Logistic Regression • Scikit-learn"
 )
