@@ -22,6 +22,27 @@ https://phishing-email-detector-mbqng6makghtsbv3scovww.streamlit.app
 
 ![Model Performance](screenshots/model-performance.png)
 
+### 📨 Email Header Security Analysis
+
+![Email Header Analysis](screenshots/header-analysis.png)
+
+### 📨 Advanced Email Header Analysis
+
+The application analyzes raw email headers for suspicious
+authentication and domain inconsistencies.
+
+It checks:
+
+- From domain
+- Reply-To domain
+- Return-Path domain
+- SPF
+- DKIM
+- DMARC
+- Message-ID
+- Header consistency
+- Header risk score
+
 ## 📌 Overview
 
 The Phishing Email Detection System is a machine-learning-based
