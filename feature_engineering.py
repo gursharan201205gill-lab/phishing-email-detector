@@ -1,5 +1,5 @@
 from pyexpat import features
-import regit 
+import re
 from urllib.parse import urlparse
 
 from risk_engine import calculate_overall_risk
