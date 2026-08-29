@@ -1,7 +1,6 @@
 from pyexpat import features
 import re
 from turtle import st
-from turtle import st
 from urllib.parse import urlparse
 
 from risk_engine import calculate_overall_risk
