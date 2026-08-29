@@ -1,7 +1,7 @@
 import re
+
 from email import policy
 from email.parser import Parser
-from urllib.parse import urlparse
 
 
 # ============================================================
@@ -57,22 +57,34 @@ def parse_headers(raw_headers):
         return {}
 
     try:
-
         message = Parser(
             policy=policy.default
         ).parsestr(raw_headers)
 
     except Exception:
-
         return {}
 
     headers = {}
 
     for key, value in message.items():
 
-        headers[key.lower()] = clean_header(
-            value
-        )
+        key = key.lower()
+
+        # Keep multiple Received headers as a list
+        if key == "received":
+
+            if key not in headers:
+                headers[key] = []
+
+            headers[key].append(
+                clean_header(value)
+            )
+
+        else:
+
+            headers[key] = clean_header(
+                value
+            )
 
     return headers
 
@@ -83,7 +95,7 @@ def parse_headers(raw_headers):
 
 def count_received_headers(headers):
     """
-    Count Received headers from raw header text.
+    Count Received headers.
     """
 
     if not headers:
@@ -91,7 +103,7 @@ def count_received_headers(headers):
 
     received = headers.get(
         "received",
-        ""
+        [],
     )
 
     if not received:
@@ -100,27 +112,23 @@ def count_received_headers(headers):
     if isinstance(received, list):
         return len(received)
 
-    return received.count(
-        "Received:"
-    ) + 1
+    return 1
 
 
 # ============================================================
 # AUTHENTICATION STATUS
 # ============================================================
 
-def get_authentication_status(
-    headers
-):
+def get_authentication_status(headers):
 
     authentication_results = headers.get(
         "authentication-results",
-        ""
+        "",
     )
 
     received_spf = headers.get(
         "received-spf",
-        ""
+        "",
     )
 
     result = {
@@ -130,12 +138,14 @@ def get_authentication_status(
     }
 
     combined = (
-        authentication_results
+        str(authentication_results)
         + " "
-        + received_spf
+        + str(received_spf)
     ).lower()
 
+    # --------------------------------------------------------
     # SPF
+    # --------------------------------------------------------
 
     if re.search(
         r"\bspf\s*=\s*pass\b",
@@ -151,7 +161,9 @@ def get_authentication_status(
 
         result["spf"] = "Fail / Not Passed"
 
+    # --------------------------------------------------------
     # DKIM
+    # --------------------------------------------------------
 
     if re.search(
         r"\bdkim\s*=\s*pass\b",
@@ -167,7 +179,9 @@ def get_authentication_status(
 
         result["dkim"] = "Fail / Not Passed"
 
+    # --------------------------------------------------------
     # DMARC
+    # --------------------------------------------------------
 
     if re.search(
         r"\bdmarc\s*=\s*pass\b",
@@ -200,28 +214,38 @@ def analyze_headers(raw_headers):
 
         return {
             "valid": False,
-            "error": "No valid email headers detected.",
+            "error": (
+                "No valid email headers detected."
+            ),
         }
+
+    # --------------------------------------------------------
+    # Extract headers
+    # --------------------------------------------------------
 
     from_header = headers.get(
         "from",
-        ""
+        "",
     )
 
     reply_to = headers.get(
         "reply-to",
-        ""
+        "",
     )
 
     return_path = headers.get(
         "return-path",
-        ""
+        "",
     )
 
     message_id = headers.get(
         "message-id",
-        ""
+        "",
     )
+
+    # --------------------------------------------------------
+    # Extract domains
+    # --------------------------------------------------------
 
     from_domain = extract_email_domain(
         from_header
@@ -255,8 +279,10 @@ def analyze_headers(raw_headers):
     # Authentication
     # --------------------------------------------------------
 
-    authentication = get_authentication_status(
-        headers
+    authentication = (
+        get_authentication_status(
+            headers
+        )
     )
 
     # --------------------------------------------------------
@@ -267,6 +293,7 @@ def analyze_headers(raw_headers):
 
     indicators = []
 
+    # Reply-To mismatch
     if reply_to_mismatch:
 
         risk_score += 30
@@ -275,6 +302,7 @@ def analyze_headers(raw_headers):
             "From and Reply-To domains do not match"
         )
 
+    # Return-Path mismatch
     if return_path_mismatch:
 
         risk_score += 20
@@ -283,30 +311,43 @@ def analyze_headers(raw_headers):
             "From and Return-Path domains do not match"
         )
 
-    if authentication["spf"] == "Fail / Not Passed":
+    # SPF
+    if authentication["spf"] == (
+        "Fail / Not Passed"
+    ):
 
         risk_score += 20
 
         indicators.append(
-            "SPF authentication failed or was not passed"
+            "SPF authentication failed "
+            "or was not passed"
         )
 
-    if authentication["dkim"] == "Fail / Not Passed":
+    # DKIM
+    if authentication["dkim"] == (
+        "Fail / Not Passed"
+    ):
 
         risk_score += 15
 
         indicators.append(
-            "DKIM authentication failed or was not passed"
+            "DKIM authentication failed "
+            "or was not passed"
         )
 
-    if authentication["dmarc"] == "Fail / Not Passed":
+    # DMARC
+    if authentication["dmarc"] == (
+        "Fail / Not Passed"
+    ):
 
         risk_score += 25
 
         indicators.append(
-            "DMARC authentication failed or was not passed"
+            "DMARC authentication failed "
+            "or was not passed"
         )
 
+    # Missing Message-ID
     if not message_id:
 
         risk_score += 5
@@ -320,7 +361,12 @@ def analyze_headers(raw_headers):
         100,
     )
 
+    # --------------------------------------------------------
+    # Final result
+    # --------------------------------------------------------
+
     return {
+
         "valid": True,
 
         "from": from_header,

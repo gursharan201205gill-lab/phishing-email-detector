@@ -1,5 +1,10 @@
+from pyexpat import features
 import re
+from turtle import st
+from turtle import st
 from urllib.parse import urlparse
+
+from risk_engine import calculate_overall_risk
 
 
 # ============================================================
@@ -723,3 +728,39 @@ def augment_text(text):
         f"{text} "
         f"{' '.join(extra_tokens)}"
     )
+
+# ====================================================
+# URL RISK
+# ====================================================
+
+def augment_text(text):
+    features = extract_features(text)
+
+    extra_tokens = []
+
+    extra_tokens.append(
+        f"URL_COUNT_{min(features['url_count'], 10)}"
+    )
+
+    extra_tokens.append(
+        f"SUSPICIOUS_COUNT_"
+        f"{min(features['suspicious_keyword_count'], 10)}"
+    )
+
+    if features["has_https"]:
+        extra_tokens.append("HAS_HTTPS")
+
+    if features["has_ip_url"]:
+        extra_tokens.append("HAS_IP_URL")
+
+    if features["has_shortener"]:
+        extra_tokens.append("HAS_URL_SHORTENER")
+
+    for keyword in features["suspicious_keywords"]:
+        safe_keyword = keyword.replace(" ", "_")
+        extra_tokens.append(
+            f"SUSPICIOUS_{safe_keyword}"
+        )
+
+    return f"{text} {' '.join(extra_tokens)}"
+
